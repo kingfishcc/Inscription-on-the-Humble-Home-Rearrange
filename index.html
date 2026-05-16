@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>陋室銘（作者：劉禹錫）　重組練習</title>
+    <title>陋室銘</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- 引入 SortableJS 實現拖曳排序功能 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
     <link href="https://cdn.jsdelivr.net/npm/gensen-rounded-web@1.0.1/css/gensen-rounded-tw.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,12 +22,14 @@
             --success-color: #10b981; /* Emerald 500 */
             --error-color: #ef4444; /* Red 500 */
             
-            /* 字體順序設定 */
+            /* 👇 關鍵修改在這裡：字體順序設定 👇 */
+            /* 瀏覽器會從左讀到右：源泉圓體優先 -> Chiron GoRound TC 備用 -> 最後用微軟正黑體或系統預設 */
             --main-font: 'GenSenRounded TW', 'Chiron GoRound TC', 'Microsoft JhengHei', sans-serif;
         }
 
         body {
             font-family: var(--main-font);
+            /* 👇 加上 Google Fonts 視覺微調屬性 👇 */
             font-optical-sizing: auto;
             
             background-color: #f0fdf4;
@@ -65,6 +70,7 @@
             box-shadow: 0 4px 0 #e5e7eb;
             font-size: 1.35rem;
             margin: 6px;
+            /* 阻擋雙擊放大，讓點擊判斷更靈敏 (連點防護) */
             touch-action: manipulation;
         }
         .word-item:active {
@@ -98,7 +104,7 @@
             font-family: var(--main-font);
         }
         .drop-zone:empty::before {
-            content: '請點選下方詞語卡片，排列成通順的文句';
+            content: '請點選上方詞語卡片，排列成通順的文句';
             color: #94a3b8;
             font-size: 1.1rem;
             width: 100%;
@@ -118,6 +124,17 @@
             animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
         }
 
+        /* SortableJS drag classes */
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        .sortable-drag {
+            cursor: grabbing !important;
+            opacity: 0.9;
+        }
+
         @keyframes shake {
             10%, 90% { transform: translate3d(-1px, 0, 0); }
             20%, 80% { transform: translate3d(2px, 0, 0); }
@@ -133,24 +150,6 @@
         }
         .btn-action:active {
             transform: scale(0.95);
-        }
-
-        /* Number Badge Styles */
-        .number-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 3.25rem;
-            height: 3.25rem;
-            border-radius: 50%;
-            background-color: #d1fae5; /* Emerald 100 */
-            border: 5px solid #a7f3d0; /* Emerald 200 */
-            color: #047857; /* Emerald 700 */
-            font-weight: 800;
-            font-size: 1.5rem;
-            font-family: 'Arial', sans-serif;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            flex-shrink: 0;
         }
 
         /* Feedback Animation Styles */
@@ -216,6 +215,7 @@
         }
     </style>
 </head>
+<!-- 加入 oncontextmenu="return false;" 禁止右鍵選單 -->
 <body class="min-h-screen p-4 pb-12" oncontextmenu="return false;">
 
     <!-- Completion Overlay -->
@@ -237,10 +237,10 @@
 
     <div class="max-w-3xl mx-auto">
         <!-- Header -->
-        <header class="text-center mb-10">
+        <header class="text-center mb-10 mt-6">
             <div class="inline-block p-1 rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 mb-4">
                 <div class="bg-white rounded-full px-6 py-2">
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600 font-bold tracking-wide uppercase text-sm font-sans">Classical Chinese Literature</span>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600 font-bold tracking-wide uppercase text-sm font-sans">Classic Chinese Literature</span>
                 </div>
             </div>
             <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2 leading-snug tracking-tight">
@@ -248,14 +248,14 @@
                 <span class="text-xl sm:text-2xl text-gray-600 font-bold mx-1 align-baseline">（作者：劉禹錫）</span>
                 重組練習
             </h1>
-            <p class="text-lg text-gray-600 font-bold tracking-wide">請將下方文句重新排列成正確的課文段落</p>
+            <p class="text-lg text-gray-600 font-bold tracking-wide mt-4">請將下方詩句重新排列成正確的課文段落</p>
             
             <!-- Progress -->
             <div class="mt-6 max-w-xs mx-auto">
                 <div class="h-4 bg-gray-200 rounded-full overflow-hidden border border-gray-100">
                     <div id="progress-bar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-400 transition-all duration-500 ease-out" style="width: 0%"></div>
                 </div>
-                <p class="text-sm text-gray-500 mt-2 text-center font-bold" id="progress-text">完成進度：0/3</p>
+                <p class="text-sm text-gray-500 mt-2 text-center font-bold" id="progress-text">完成進度：0/4</p>
             </div>
         </header>
 
@@ -265,7 +265,7 @@
         <!-- Footer / Citation -->
         <footer class="mt-16 mb-8 text-center">
             <div class="max-w-xl mx-auto px-4 space-y-1">
-                <p class="text-gray-600 font-medium text-sm">原版工具：特教米克師；延伸開發：金魚老師</p>
+                <p class="text-gray-600 font-medium text-sm">原版工具：米克師；延伸開發：金魚老師</p>
                 <p class="text-gray-600 font-medium text-sm">
                     工具連結：<a href="https://reurl.cc/KO98Q9" target="_blank" rel="noopener noreferrer" class="hover:text-emerald-600 hover:underline transition-colors">https://reurl.cc/KO98Q9</a>
                 </p>
@@ -281,66 +281,60 @@
         const exercises = [
             {
                 id: 'q1',
-                num: '1',
                 label: '第一段',
                 answer: '山不在高，有仙則名；水不在深，有龍則靈。斯是陋室，惟吾德馨。',
-                chunks: [
-                    '山不在高，', '有仙則名；', 
-                    '水不在深，', '有龍則靈。', 
-                    '斯是陋室，', '惟吾德馨。'
-                ]
+                ttsText: '山不在高，有仙則名；水不在深，有龍則靈。斯是陋室，惟吾德馨。',
+                chunks: ['山不在高，', '有仙則名；', '水不在深，', '有龍則靈。', '斯是陋室，', '惟吾德馨。']
             },
             {
                 id: 'q2',
-                num: '2',
                 label: '第二段 ①',
                 answer: '苔痕上階綠，草色入簾青。談笑有鴻儒，往來無白丁。',
-                chunks: [
-                    '苔痕上階綠，', '草色入簾青。', 
-                    '談笑有鴻儒，', '往來無白丁。'
-                ]
+                ttsText: '苔痕上階綠，草色入簾青。談笑有鴻儒，往來無白丁。',
+                chunks: ['苔痕上階綠，', '草色入簾青。', '談笑有鴻儒，', '往來無白丁。']
             },
             {
                 id: 'q3',
-                num: '3',
                 label: '第二段 ②',
                 answer: '可以調素琴，閱金經。無絲竹之亂耳，無案牘之勞形。',
-                chunks: [
-                    '可以調素琴，', '閱金經。', 
-                    '無絲竹之亂耳，', '無案牘之勞形。'
-                ]
+                ttsText: '可以調素琴，閱金經。無絲竹之亂耳，無案牘之勞形。',
+                chunks: ['可以調素琴，', '閱金經。', '無絲竹之亂耳，', '無案牘之勞形。']
             },
             {
                 id: 'q4',
-                num: '4',
                 label: '第三段',
                 answer: '南陽諸葛廬，西蜀子雲亭。孔子云：「何陋之有？」',
-                chunks: [
-                    '南陽諸葛廬，', '西蜀子雲亭。', 
-                    '孔子云：「何陋之有？」'
-                ]
+                ttsText: '南陽諸葛廬，西蜀子雲亭。孔子云：「何陋之有？」',
+                chunks: ['南陽諸葛廬，', '西蜀子雲亭。', '孔子云：', '「何陋之有？」']
             }
         ];
 
+        // 用於判斷目前是否正在拖曳，防止放開滑鼠/手指時誤觸點擊事件
+        window.isDraggingItem = false;
+        
         let completedCount = 0;
         const totalCount = exercises.length;
         const synth = window.speechSynthesis;
 
         // --- FUNCTIONS ---
 
-        function speak(text, lang = 'zh-TW', rate = 0.95) {
-            if (!text) return;
+        function speak(text, lang = 'zh-TW', rate = 0.90) {
+            // 🛡️ 語音引擎相容性與空字串防護
+            if (!text || !synth) return; 
+            
             synth.cancel();
 
+            // 針對語音進行修正
             let speechText = text;
 
-            // --- 陋室銘 語音修正 ---
-            speechText = speechText.replace(/調素琴/g, '條素琴'); // 確保發音為 ㄊㄧㄠˊ
-            speechText = speechText.replace(/諸葛廬/g, '諸格廬'); // 確保「葛」發音為 ㄍㄜˊ
+            // 陋室銘 破音字與讀音修正
+            speechText = speechText.replace(/調素琴/g, '條素琴'); // ㄊㄧㄠˊ
+            speechText = speechText.replace(/案牘/g, '案讀'); // ㄉㄨˊ
+            speechText = speechText.replace(/諸葛廬/g, '諸格廬'); // ㄍㄜˊ
 
             const utterThis = new SpeechSynthesisUtterance(speechText);
             utterThis.lang = lang;
-            utterThis.rate = rate;
+            utterThis.rate = rate; // 放慢語速讓新詩更有感覺
             synth.speak(utterThis);
         }
 
@@ -357,8 +351,8 @@
 
                 card.innerHTML = `
                     <div class="mb-4 flex items-center gap-4">
-                        <div class="number-badge">${ex.num}</div>
-                        <h2 class="text-2xl font-bold text-gray-700 tracking-wide">${ex.label}</h2>
+                        <span class="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-bold text-lg border-2 border-emerald-200">${ex.id.replace('q', '')}</span>
+                        <h2 class="text-xl font-bold text-gray-700 tracking-wide">${ex.label}</h2>
                     </div>
                     
                     <!-- Word Bank -->
@@ -373,7 +367,7 @@
                     <div class="flex flex-wrap items-center gap-3 mt-2">
                         <button class="btn-action check-btn bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-xl shadow-md border-b-4 border-emerald-700 active:border-b-0 active:translate-y-1 transition-all text-lg flex-grow sm:flex-grow-0" data-id="${ex.id}">檢查答案</button>
                         <button class="btn-action reset-btn bg-white hover:bg-gray-50 text-gray-600 border-2 border-gray-300 border-b-4 font-bold py-3 px-6 rounded-xl active:border-b-2 active:translate-y-1 transition-all text-lg" data-id="${ex.id}">重置</button>
-                        <button class="btn-action hint-btn bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-3 px-6 rounded-xl border-b-4 border-amber-300 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 text-lg ml-auto" data-text="${ex.answer.replace(/"/g, '&quot;')}">
+                        <button class="btn-action hint-btn bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-3 px-6 rounded-xl border-b-4 border-amber-300 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 text-lg ml-auto" data-text="${ex.ttsText.replace(/"/g, '&quot;')}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>
                             聽解答
                         </button>
@@ -382,10 +376,44 @@
                 `;
 
                 container.appendChild(card);
+
+                // 畫面渲染完成後，為每一個「作答區」初始化拖曳排序功能 (SortableJS)
+                const zone = document.getElementById(`zone-${ex.id}`);
+                
+                new Sortable(zone, {
+                    animation: 150,           // 拖曳時的動畫效果速度
+                    ghostClass: 'sortable-ghost', // 拖曳時下方佔位符的 CSS class
+                    dragClass: 'sortable-drag',   // 正在被拖曳元素的 CSS class
+                    delay: 150,               // 觸控裝置需長按 150 毫秒才能拖曳 (防止誤觸與干擾滑動)
+                    delayOnTouchOnly: true,   // 滑鼠可直接拖曳，僅觸控裝置需要延遲
+
+                    // 開始拖曳時的事件
+                    onStart: function (evt) {
+                        // 標記全域變數為拖曳中，這樣就能有效防止放開時觸發 click 事件
+                        window.isDraggingItem = true;
+                    },
+                    
+                    // 結束拖曳時的事件
+                    onEnd: function (evt) {
+                        // 清除視覺狀態、準備重新檢查等
+                        const feedbackEl = card.querySelector('.feedback');
+                        feedbackEl.textContent = '';
+                        zone.classList.remove('correct', 'incorrect');
+                        
+                        // 如果這題原本已經答對，但現在被拖曳改變了順序，就要取消它的完成狀態並扣除進度
+                        if (zone.dataset.completed) {
+                            delete zone.dataset.completed;
+                            updateProgress(-1);
+                        }
+
+                        // 🛡️ 拖曳狀態卡死防護：
+                        // 稍微延遲解除拖曳狀態 (100毫秒)。
+                        setTimeout(() => { 
+                            window.isDraggingItem = false; 
+                        }, 100);
+                    }
+                });
             });
-            
-            // 初始化進度條文字顯示
-            document.getElementById('progress-text').textContent = `完成進度：0/${totalCount}`;
         }
 
         // --- EVENT DELEGATION ---
@@ -394,6 +422,9 @@
 
             // 1. Word Item Click (Chinese blocks)
             if (target.classList.contains('word-item')) {
+                // 🛡️ 拖曳防誤觸判斷：如果系統判定目前正在拖曳中，則取消點擊動作
+                if (window.isDraggingItem) return;
+
                 const card = target.closest('.exercise-card');
                 if (!card) return;
                 const exId = card.dataset.id;
